@@ -22,36 +22,52 @@ public class Application implements CommandLineRunner {
 
     @Override
     public void run(String... strings) throws Exception {
-
+        ArrayList<ExtractProjectPTM> tasks = new ArrayList<ExtractProjectPTM>();
         RestTemplate restTemplate = new RestTemplate();
-        Quote result = restTemplate.getForObject("http://gturnquist-quoters.cfapps.io/api/random",  Quote.class );
-        log.info(result.toString());
-        ProjectSummaryList list = restTemplate.getForObject("http://www.ebi.ac.uk:80/pride/ws/archive/project/list?show=500&page=0&order=desc&ptmsFilter=phosphorylation",ProjectSummaryList.class);
-        PrintWriter out = new PrintWriter(new FileWriter("C:\\Users\\lenovo\\Documents\\Work\\UCLA\\ptmfrompride.txt", true));
-    try {
-        for (ProjectSummary pj : list.list) {
-            String PeptideCountURL = String.format("http://www.ebi.ac.uk:80/pride/ws/archive/peptide/count/project/%s", pj.accession);
-            int PeptideCount = restTemplate.getForObject(PeptideCountURL, int.class);
-            if (PeptideCount > 0) {
-                int PageNumber = PeptideCount / 100;
-                for (int i = 0; i <= PageNumber; i++) {
-                    System.out.println(String.format("%d/%d", i, PageNumber));
-                    String PsmURL = String.format("http://www.ebi.ac.uk:80/pride/ws/archive/peptide/list/project/%s?show=100&page=%d", pj.accession, i);
-                    PsmDetailList pdList = restTemplate.getForObject(PsmURL, PsmDetailList.class);
-                    for (PsmDetail pd : pdList.list) {
-                        if (pd.modifications.size() > 0) {
-                            out.println(String.format("%s|%s|%s", pd.sequence, pd.modifications.toString(), pd.spectrumID));
+        String PTMFilter = "phosphorylation";
+        String PTMProjectCount = String.format("https://www.ebi.ac.uk:443/pride/ws/archive/project/count?ptmsFilter=%s", PTMFilter);
+        int ProjectCount = restTemplate.getForObject(PTMProjectCount,int.class);
+        if (ProjectCount>0)
+        {
+            int PageNumber = ProjectCount/10;
+            for(int i=0;i<PageNumber;i++)
+            {
+
+                String ProjectURL = String.format("http://www.ebi.ac.uk:80/pride/ws/archive/project/list?show=10&page=%d&order=desc&ptmsFilter=%s",i,PTMFilter);
+                ProjectSummaryList list = restTemplate.getForObject(ProjectURL,ProjectSummaryList.class);
+                if (tasks.size()==0)
+                {
+                    for (ProjectSummary pj : list.list) {
+                        ExtractProjectPTM extractTask = new ExtractProjectPTM(pj, PTMFilter);
+                        extractTask.start();
+                        tasks.add(extractTask);
+                        System.out.println(String.format("Prject £º%s started!", pj.accession));
+                    }
+                }
+                else {
+                    for (ProjectSummary pj : list.list) {
+                        while(true) {
+                            boolean getRoom = false;
+                            for (ExtractProjectPTM task : tasks) {
+                                if (task.Stopped) {
+                                    tasks.remove(task);
+                                    ExtractProjectPTM extractTask = new ExtractProjectPTM(pj, PTMFilter);
+                                    extractTask.start();
+                                    tasks.add(extractTask);
+                                    System.out.println(String.format("Prject £º%s started!", pj.accession));
+                                    getRoom =true;
+                                    break;
+                                }
+                            }
+                            if (getRoom)
+                                break;
                         }
+
                     }
                 }
             }
+
         }
-    }catch (Exception e)
-    {
-        System.out.println(e.getStackTrace().toString());}
-      finally {
-        out.close();
-    }
-        log.info(list.toString());
+
     }
 }
