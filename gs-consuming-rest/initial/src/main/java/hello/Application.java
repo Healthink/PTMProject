@@ -46,7 +46,8 @@ public class Application implements CommandLineRunner {
                 }
                 else {
                     for (ProjectSummary pj : list.list) {
-                        while(true) {
+                        int waittime = 0;
+                        while(true && waittime<60) {
                             boolean getRoom = false;
                             for (ExtractProjectPTM task : tasks) {
                                 if (task.Stopped) {
@@ -58,9 +59,19 @@ public class Application implements CommandLineRunner {
                                     getRoom =true;
                                     break;
                                 }
+
+
                             }
                             if (getRoom)
                                 break;
+                            Thread.sleep(1000);
+                            waittime+=1;
+                        }
+                        if( waittime==60){
+                            ExtractProjectPTM extractTask = new ExtractProjectPTM(pj, PTMFilter);
+                            extractTask.start();
+                            tasks.add(extractTask);
+                            System.out.println(String.format("Prject  %s started! at PageNumber %d", pj.accession,i));
                         }
 
                     }

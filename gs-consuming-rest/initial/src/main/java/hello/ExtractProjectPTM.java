@@ -65,6 +65,7 @@ public class ExtractProjectPTM  implements Runnable {
        }catch (Exception e)
        {
            e.printStackTrace();
+           Stopped = true;
           // System.out.println(e.getStackTrace().toString());
        }finally {
            Stopped = true;
