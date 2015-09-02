@@ -24,13 +24,13 @@ public class Application implements CommandLineRunner {
     public void run(String... strings) throws Exception {
         ArrayList<ExtractProjectPTM> tasks = new ArrayList<ExtractProjectPTM>();
         RestTemplate restTemplate = new RestTemplate();
-        String PTMFilter = "phosphorylation";
+        String PTMFilter = "acetylation";
         String PTMProjectCount = String.format("https://www.ebi.ac.uk:443/pride/ws/archive/project/count?ptmsFilter=%s", PTMFilter);
         int ProjectCount = restTemplate.getForObject(PTMProjectCount,int.class);
         if (ProjectCount>0)
         {
             int PageNumber = ProjectCount/10;
-            for(int i=0;i<PageNumber;i++)
+            for(int i=0;i<=PageNumber;i++)
             {
 
                 String ProjectURL = String.format("http://www.ebi.ac.uk:80/pride/ws/archive/project/list?show=10&page=%d&order=desc&ptmsFilter=%s",i,PTMFilter);
@@ -41,7 +41,7 @@ public class Application implements CommandLineRunner {
                         ExtractProjectPTM extractTask = new ExtractProjectPTM(pj, PTMFilter);
                         extractTask.start();
                         tasks.add(extractTask);
-                        System.out.println(String.format("Prject £º%s started!", pj.accession));
+                        System.out.println(String.format("Prject  %s started! at PageNumber %d", pj.accession,i));
                     }
                 }
                 else {
@@ -54,7 +54,7 @@ public class Application implements CommandLineRunner {
                                     ExtractProjectPTM extractTask = new ExtractProjectPTM(pj, PTMFilter);
                                     extractTask.start();
                                     tasks.add(extractTask);
-                                    System.out.println(String.format("Prject £º%s started!", pj.accession));
+                                    System.out.println(String.format("Prject  %s started! at PageNumber %d", pj.accession,i));
                                     getRoom =true;
                                     break;
                                 }
@@ -68,6 +68,8 @@ public class Application implements CommandLineRunner {
             }
 
         }
+
+        System.out.println("End!!!!!!!!!");
 
     }
 }
