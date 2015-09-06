@@ -23,6 +23,7 @@ public class Application implements CommandLineRunner {
     @Override
     public void run(String... strings) throws Exception {
         ArrayList<ExtractProjectPTM> tasks = new ArrayList<ExtractProjectPTM>();
+        long waitlevel = 60;
         RestTemplate restTemplate = new RestTemplate();
         String PTMFilter = "acetylation";
         String PTMProjectCount = String.format("https://www.ebi.ac.uk:443/pride/ws/archive/project/count?ptmsFilter=%s", PTMFilter);
@@ -34,7 +35,21 @@ public class Application implements CommandLineRunner {
             {
 
                 String ProjectURL = String.format("http://www.ebi.ac.uk:80/pride/ws/archive/project/list?show=10&page=%d&order=desc&ptmsFilter=%s",i,PTMFilter);
-                ProjectSummaryList list = restTemplate.getForObject(ProjectURL,ProjectSummaryList.class);
+
+                ProjectSummaryList list;
+                try {
+                    list = restTemplate.getForObject(ProjectURL, ProjectSummaryList.class);
+                }catch (Exception e)
+                {
+                    Thread.sleep(3000);
+                    try {
+                        list = restTemplate.getForObject(ProjectURL, ProjectSummaryList.class);
+                    }catch   (Exception e2){
+                        Thread.sleep(6000);
+                        list = restTemplate.getForObject(ProjectURL, ProjectSummaryList.class);
+                    }
+
+                }
                 if (tasks.size()==0)
                 {
                     for (ProjectSummary pj : list.list) {
@@ -47,7 +62,7 @@ public class Application implements CommandLineRunner {
                 else {
                     for (ProjectSummary pj : list.list) {
                         int waittime = 0;
-                        while(true && waittime<60) {
+                        while(true && waittime<waitlevel) {
                             boolean getRoom = false;
                             for (ExtractProjectPTM task : tasks) {
                                 if (task.Stopped) {
@@ -67,11 +82,12 @@ public class Application implements CommandLineRunner {
                             Thread.sleep(1000);
                             waittime+=1;
                         }
-                        if( waittime==60){
+                        if( waittime==waitlevel){
                             ExtractProjectPTM extractTask = new ExtractProjectPTM(pj, PTMFilter);
                             extractTask.start();
                             tasks.add(extractTask);
                             System.out.println(String.format("Prject  %s started! at PageNumber %d", pj.accession,i));
+                            waitlevel += 30;
                         }
 
                     }

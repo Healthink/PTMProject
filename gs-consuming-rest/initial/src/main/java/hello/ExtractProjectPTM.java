@@ -41,13 +41,37 @@ public class ExtractProjectPTM  implements Runnable {
            RestTemplate restTemplate = new RestTemplate();
            PrintWriter out = new PrintWriter(new FileWriter(String.format("C:\\Users\\haomin\\Documents\\PTMProject\\ptmfrompride_%s_%s.txt", project.accession, modname), true));
            String PeptideCountURL = String.format("http://www.ebi.ac.uk:80/pride/ws/archive/peptide/count/project/%s", project.accession);
-           int PeptideCount = restTemplate.getForObject(PeptideCountURL, int.class);
+           int PeptideCount ;
+           try {
+               PeptideCount = restTemplate.getForObject(PeptideCountURL, int.class);
+           }catch (Exception e)
+           {
+               Thread.sleep(3000);
+               try {
+                   PeptideCount = restTemplate.getForObject(PeptideCountURL, int.class);
+               }catch (Exception e2)
+               {
+                   Thread.sleep(6000);
+                   PeptideCount = restTemplate.getForObject(PeptideCountURL, int.class);
+               }
+           }
            if (PeptideCount > 0) {
                int PageNumber = PeptideCount / 1000;
                for (int i = 0; i <= PageNumber; i++) {
                    System.out.println(String.format("%s : %d/%d", project.accession, i, PageNumber));
                    String PsmURL = String.format("http://www.ebi.ac.uk:80/pride/ws/archive/peptide/list/project/%s?show=1000&page=%d", project.accession, i);
-                   PsmDetailList pdList = restTemplate.getForObject(PsmURL, PsmDetailList.class);
+                   PsmDetailList pdList;
+                   try {
+                       pdList = restTemplate.getForObject(PsmURL, PsmDetailList.class);
+                   }catch (Exception e){
+                       Thread.sleep(3000);
+                       try {
+                           pdList = restTemplate.getForObject(PsmURL, PsmDetailList.class);
+                       }catch (Exception e2){
+                           Thread.sleep(6000);
+                           pdList = restTemplate.getForObject(PsmURL, PsmDetailList.class);
+                       }
+                   }
                    for (PsmDetail pd : pdList.list) {
                        if (pd.modifications.size() > 0) {
                            for (ModifiedLocation mod : pd.modifications) {
