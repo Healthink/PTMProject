@@ -44,8 +44,6 @@ public class ProjectFileDownLoad {
        SpectrumInfo spectrumInfo = new SpectrumInfo();
        try {
 
-
-
            // standard for reading an XML file
            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
            factory.setNamespaceAware(true);
