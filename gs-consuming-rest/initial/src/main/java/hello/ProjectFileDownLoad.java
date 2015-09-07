@@ -3,10 +3,7 @@ package hello;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.springframework.web.client.RestTemplate;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.w3c.dom.*;
 import sun.misc.BASE64Decoder;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -32,7 +29,8 @@ public class ProjectFileDownLoad {
     private String Project;
     private String FileName;
     private String SpectrumID;
-    private  String Folder = "C:\\Users\\lenovo\\Documents\\GitHub\\PTMProject";
+    private  String Folder = "C:\\Users\\haomin\\Documents\\PTMProject";
+    private  boolean UseDom = false;
     public ProjectFileDownLoad(String Proj, String File,String spectrumId){
         Project = Proj;
         FileName = File;
@@ -42,6 +40,14 @@ public class ProjectFileDownLoad {
    public SpectrumInfo GetSpectrum(){
 
        SpectrumInfo spectrumInfo = new SpectrumInfo();
+
+       if (!UseDom)
+       {
+           PrideXMLParsing pxmlparser = new PrideXMLParsing(String.format("%s\\%s",Folder,FileName),SpectrumID);
+
+           spectrumInfo = pxmlparser.Parsing();
+           return spectrumInfo;
+       }
        try {
 
            // standard for reading an XML file
@@ -58,67 +64,70 @@ public class ProjectFileDownLoad {
 
            // create an XPath object
            XPath xpath = xFactory.newXPath();
+            try {
+                // compile the XPath expression of msLevel
+                XPathExpression msLevelXpath = xpath.compile(String.format("//spectrum[@id='%s']/spectrumDesc/spectrumSettings/spectrumInstrument/@msLevel", SpectrumID));
+                // run the query and get a nodeset
+                NodeList nodes = (NodeList) msLevelXpath.evaluate(doc, XPathConstants.NODESET);
+                Attr msLevelAttr = (Attr) nodes.item(0);
+                spectrumInfo.msLevel = msLevelAttr.getValue();
+            }catch (Exception e)
+            {
+                e.printStackTrace();
+            }
 
-           // compile the XPath expression
-           expr = xpath.compile(String.format("//spectrum[@id='%s']",SpectrumID));
-           // run the query and get a nodeset
-           Object result = expr.evaluate(doc, XPathConstants.NODESET);
+            try {
+                // compile the XPath expression of precursor
+                XPathExpression precursorXpath = xpath.compile(String.format("//spectrum[@id='%s']/spectrumDesc/precursorList/precursor[1]/ionSelection/cvParam[@accession='PSI:1000040']/@value", SpectrumID));
+                // run the query and get a nodeset
+                NodeList precursornodes = (NodeList) precursorXpath.evaluate(doc, XPathConstants.NODESET);
 
-           // cast the result to a DOM NodeList
-           NodeList nodes = (NodeList) result;
+                Attr precursorAttr = (Attr) precursornodes.item(0);
+                spectrumInfo.PrecursorMz = Float.parseFloat(precursorAttr.getValue());
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
 
-          Element SpectrumNode = (Element) nodes.item(0);
-
-           Node spectrumDescNode = SpectrumNode.getFirstChild();
-
-           Node spectrumSeetingsNode = spectrumDescNode.getFirstChild();
-
-           Element spectrumInstrumentNode = (Element) spectrumSeetingsNode.getFirstChild();
-
-           spectrumInfo.msLevel =  spectrumInstrumentNode.getAttribute("msLevel");
-
-           Node precursorList = spectrumDescNode.getChildNodes().item(1);
-
-           Node precursorNode = precursorList.getFirstChild();
-
-           Node ionSelection = precursorNode.getFirstChild();
-
-           NodeList cvParams = ionSelection.getChildNodes();
-
-           for(int i=0;i<cvParams.getLength();i++)
+           try {
+               // compile the XPath expression of precursor
+               XPathExpression chargeXpath = xpath.compile(String.format("//spectrum[@id='%s']/spectrumDesc/precursorList/precursor[1]/ionSelection/cvParam[@accession='PSI:1000041']/@value", SpectrumID));
+               // run the query and get a nodeset
+               NodeList chargenodes = (NodeList) chargeXpath.evaluate(doc, XPathConstants.NODESET);
+               Attr chargeAttr = (Attr) chargenodes.item(0);
+               spectrumInfo.PrecursorCharge = Integer.parseInt(chargeAttr.getValue());
+           }catch (Exception e)
            {
-               if (((Element)cvParams.item(i)).getAttribute("accession").equals("MS:1000744"))
-               {
-                   spectrumInfo.PrecursorMz = Float.parseFloat(((Element)cvParams.item(i)).getAttribute("value"));
-               }else if (((Element)cvParams.item(i)).getAttribute("accession").equals("MS:1000041"))
-               {
-                   spectrumInfo.PrecursorCharge = Integer.parseInt(((Element) cvParams.item(i)).getAttribute("value"));
-               }
+               e.printStackTrace();
            }
+            try {
+                // compile the XPath expression of mzarray
+                XPathExpression mzArrayXpath = xpath.compile(String.format("//spectrum[@id='%s']/mzArrayBinary/data", SpectrumID));
+                // run the query and get a nodeset
+                NodeList mzArraynodes = (NodeList) mzArrayXpath.evaluate(doc, XPathConstants.NODESET);
+                Element dataNode = (Element) mzArraynodes.item(0);
+                spectrumInfo.mzArray = GetBase64Values(dataNode.getTextContent(), dataNode.getAttribute("precision"), dataNode.getAttribute("endian"), Integer.parseInt(dataNode.getAttribute("length")));
+            }catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+           try {
 
-          NodeList lists =  SpectrumNode.getChildNodes();
-           for(int i=0;i<lists.getLength();i++)
+               // compile the XPath expression of mzarray
+               XPathExpression intArrayXpath = xpath.compile(String.format("//spectrum[@id='%s']/intenArrayBinary/data", SpectrumID));
+               // run the query and get a nodeset
+               NodeList intArraynodes = (NodeList) intArrayXpath.evaluate(doc, XPathConstants.NODESET);
+               Element dataNode2 = (Element) intArraynodes.item(0);
+               spectrumInfo.intenArray = GetBase64Values(dataNode2.getTextContent(), dataNode2.getAttribute("precision"), dataNode2.getAttribute("endian"), Integer.parseInt(dataNode2.getAttribute("length")));
+           }
+           catch (Exception e)
            {
-               if (lists.item(i).getNodeName().equals("mzArrayBinary"))
-               {
-                   Element dataNode = (Element) lists.item(i).getFirstChild();
-                   spectrumInfo.mzArray = GetBase64Values(dataNode.getTextContent(),dataNode.getAttribute("precision"),dataNode.getAttribute("endian"),Integer.parseInt(dataNode.getAttribute("length")));
-
-
-               }
-               else if (lists.item(i).getNodeName().equals("intenArrayBinary"))
-               {
-                   Element dataNode = (Element) lists.item(i).getFirstChild();
-                   spectrumInfo.intenArray = GetBase64Values(dataNode.getTextContent(),dataNode.getAttribute("precision"),dataNode.getAttribute("endian"),Integer.parseInt(dataNode.getAttribute("length")));
-
-               }
+               e.printStackTrace();
            }
-
-
-
        }catch (Exception e)
        {
-
+        e.printStackTrace();
        }
        return spectrumInfo;
    }
@@ -130,12 +139,28 @@ public class ProjectFileDownLoad {
             BASE64Decoder decoder = new BASE64Decoder();
             byte[] arr = decoder.decodeBuffer(EncodedValues);
             ByteBuffer buffer = ByteBuffer.wrap(arr);
-            buffer.order(ByteOrder.LITTLE_ENDIAN);
-
-
-            for(int i=0;i<length;i++) {
-                result.add( buffer.getFloat(i));
+            if (endian.equals("big"))
+            {
+                buffer.order(ByteOrder.BIG_ENDIAN);
             }
+            else {
+                buffer.order(ByteOrder.LITTLE_ENDIAN);
+            }
+
+            if (precision.equals("64"))
+            {
+                for(int i=0;i<length;i++) {
+                    result.add((float)buffer.getDouble(i*8));
+                }
+            }
+            else
+            {
+                for(int i=0;i<length;i++) {
+                    result.add(buffer.getFloat(i*4));
+                }
+            }
+
+
 
 
         }catch (Exception e)
@@ -188,6 +213,7 @@ public class ProjectFileDownLoad {
 
                 }catch (Exception e)
                 {
+                    e.printStackTrace();
                     return  false;
                 }
 

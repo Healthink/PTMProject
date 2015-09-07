@@ -25,7 +25,7 @@ public class Application implements CommandLineRunner {
         ArrayList<ExtractProjectPTM> tasks = new ArrayList<ExtractProjectPTM>();
         long waitlevel = 60;
         RestTemplate restTemplate = new RestTemplate();
-        String PTMFilter = "acetylation";
+        String PTMFilter = "phosphorylation";
         String PTMProjectCount = String.format("https://www.ebi.ac.uk:443/pride/ws/archive/project/count?ptmsFilter=%s", PTMFilter);
         int ProjectCount = restTemplate.getForObject(PTMProjectCount,int.class);
         if (ProjectCount>0)

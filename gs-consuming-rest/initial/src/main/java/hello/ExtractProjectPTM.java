@@ -77,6 +77,19 @@ public class ExtractProjectPTM  implements Runnable {
                            for (ModifiedLocation mod : pd.modifications) {
                                if (mod.modification.equals(modification)) {
                                    out.println(String.format("%s|%s|%s", pd.sequence, pd.modifications.toString(), pd.spectrumID));
+                                   String[] SpectrumID = pd.spectrumID.split(";");
+                                   String SpectrumIndex = SpectrumID[2].substring(SpectrumID[2].indexOf("=")+1);
+                                  ProjectFileDownLoad projectFileDownLoad = new ProjectFileDownLoad(SpectrumID[0],SpectrumID[1],SpectrumIndex);
+                                    if (projectFileDownLoad.Download())
+                                    {
+                                        SpectrumInfo spectrumInfo = projectFileDownLoad.GetSpectrum();
+                                        PTMDataBase ptmdb = new PTMDataBase();
+                                        String DTAString = spectrumInfo.GetDTA();
+                                        if(ptmdb.UpdateDTA(pd.spectrumID,DTAString)==0)
+                                        {
+                                            ptmdb.InsertSpectrum(pd.sequence,pd.modifications.toString(),pd.spectrumID,DTAString);
+                                        }
+                                    }
                                    break;
                                }
 
